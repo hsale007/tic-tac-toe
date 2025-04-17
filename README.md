@@ -1,1 +1,3 @@
-# tic-tac-toe
+# Tic Tac Toe
+
+Console version of tic tac toe.
