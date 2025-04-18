@@ -1,6 +1,6 @@
 function GameBoard() {
-  const rows = 3;
-  const cols = 3;
+  const rows = 5;
+  const cols = 5;
   let cellsFilled = 0;
   let board = [];
 
@@ -20,15 +20,15 @@ function GameBoard() {
 
   const fillCell = (value, playingAs) => {
     if (isNaN(value)) {
-      console.log("Please enter a number between 1-9");
+      console.log(`Please enter a number between 1-${totalCells()}`);
       return false;
     }
-    if (value < 1 || value > 9) {
-      console.log("Please enter a value between 1-9");
+    if (value < 1 || value > totalCells()) {
+      console.log(`Please enter a number between 1-${totalCells()}`);
       return false;
     }
     const cell = Cell();
-    const [row, col] = cell.validateUserInput(value);
+    const [row, col] = cell.validateUserInput(value, board.length);
     if (board[row][col]) {
       console.log(`${value} is already taken. Please enter a different value.`);
       return false;
@@ -39,7 +39,7 @@ function GameBoard() {
   };
 
   const checkRow = (value, playingAs) => {
-    const row = Math.floor(value / 3);
+    const row = Math.floor(value / board.length);
     for (let j = 0; j < cols; j++) {
       if (board[row][j] !== playingAs) return false;
     }
@@ -47,8 +47,8 @@ function GameBoard() {
   };
 
   const checkCol = (value, playingAs) => {
-    const row = Math.floor(value / 3);
-    const col = value - row * 3;
+    const row = Math.floor(value / board.length);
+    const col = value - row * board.length;
 
     for (let i = 0; i < rows; i++) {
       if (board[i][col] !== playingAs) return false;
@@ -118,10 +118,10 @@ function GameBoard() {
 }
 
 function Cell() {
-  const validateUserInput = (value) => {
+  const validateUserInput = (value, length) => {
     //find spot in 2d array
-    const row = Math.floor(--value / 3);
-    const col = value - row * 3;
+    const row = Math.floor(--value / length);
+    const col = value - row * length;
     return [row, col];
   };
 
@@ -129,57 +129,72 @@ function Cell() {
 }
 
 function Player() {
-  const name = prompt("What should we call you?");
-  let playingAs;
+  let playingAs, name;
+
   const getName = () => name;
+  const setName = () => (name = prompt("What is your name?"));
 
   const askPlayingAs = () => {
     do {
       playingAs = prompt(`${name} would you like to be X or O`).toUpperCase();
     } while (playingAs !== "X" && playingAs !== "O");
   };
-
   const setPlayingAs = (value) => (playingAs = value);
   const getPlayingAs = () => playingAs;
 
   const playerInfo = () => `${name}\nPlaying as ${playingAs}`;
 
-  return { getName, askPlayingAs, setPlayingAs, getPlayingAs, playerInfo };
+  const createPlayers = () => {
+    const player1 = Player();
+    const player2 = Player();
+    player1.setName();
+    player1.askPlayingAs();
+    player2.setName();
+    player2.setPlayingAs(player1.getPlayingAs() === "X" ? "O" : "X");
+
+    return [player1, player2];
+  };
+
+  return {
+    getName,
+    getPlayingAs,
+    playerInfo,
+    createPlayers,
+    setName,
+    askPlayingAs,
+    setPlayingAs,
+  };
 }
 
 function GameController() {
   const board = GameBoard();
   console.log("Welcome to Tic-Tac-Toe Console Edition!");
   board.printBoard();
-  const player1 = Player();
-  player1.askPlayingAs();
-  const player2 = Player();
-  player2PlayingAs = player1.getPlayingAs() === "X" ? "O" : "X";
-  player2.setPlayingAs(player2PlayingAs);
+  const [player1, player2] = Player().createPlayers();
   let playerTurn = "";
 
   const isGameOver = (userValue, playingAs) =>
     board.isWinner(--userValue, playingAs);
   const boardFull = () => board.getCellsFilled() === board.totalCells();
-  const getPlayerTurn = () => {
-    return (playerTurn =
+  const setPlayerTurn = () => {
+    playerTurn =
       playerTurn === ""
-        ? player1.getPlayingAs === "X"
+        ? player1.getPlayingAs() === "X"
           ? player1
           : player2
         : playerTurn === player1
         ? player2
-        : player1);
+        : player1;
   };
 
   const playGame = () => {
-    playerTurn = getPlayerTurn();
+    setPlayerTurn();
     while (!boardFull()) {
       let playingAs = playerTurn.getPlayingAs();
       let userValue;
       do {
         userValue = prompt(
-          `${playerTurn.getName()} (${playerTurn.getPlayingAs()}) please enter a number between 1-9?`
+          `${playerTurn.getName()} (${playerTurn.getPlayingAs()}) Please enter a number between 1-${board.totalCells()}`
         );
         if (userValue === null) return; //user quit
       } while (!board.fillCell(userValue, playingAs));
@@ -196,7 +211,7 @@ function GameController() {
         );
         return;
       }
-      playerTurn = getPlayerTurn();
+      setPlayerTurn();
     }
   };
   return { playGame };
