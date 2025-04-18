@@ -1,6 +1,6 @@
 function GameBoard() {
-  const rows = 5;
-  const cols = 5;
+  const rows = 3;
+  const cols = 3;
   let cellsFilled = 0;
   let board = [];
 
@@ -17,6 +17,7 @@ function GameBoard() {
   const getBoard = () => board;
   const getCellsFilled = () => cellsFilled;
   const totalCells = () => board.length * board.length;
+  const incrementCellsFilled = () => cellsFilled++;
 
   const fillCell = (value, playingAs) => {
     if (isNaN(value)) {
@@ -34,6 +35,11 @@ function GameBoard() {
       return false;
     }
     board[row][col] = playingAs;
+    const domCell = document
+      .querySelector(`.row-${row}`)
+      .querySelector(`.cell-${col}`);
+    board[row][col] = domCell.innerText = playingAs;
+    domCell.setAttribute("data", playingAs);
     cellsFilled++;
     return true;
   };
@@ -110,10 +116,11 @@ function GameBoard() {
   return {
     getBoard,
     printBoard,
-    fillCell,
+    incrementCellsFilled,
     isWinner,
     totalCells,
     getCellsFilled,
+    fillCell,
   };
 }
 
@@ -168,8 +175,9 @@ function Player() {
 
 function GameController() {
   const board = GameBoard();
-  console.log("Welcome to Tic-Tac-Toe Console Edition!");
-  board.printBoard();
+  const display = DisplayController();
+  const boardLength = board.getBoard().length;
+  display.createGameBoard(boardLength);
   const [player1, player2] = Player().createPlayers();
   let playerTurn = "";
 
@@ -192,19 +200,50 @@ function GameController() {
     while (!boardFull()) {
       let playingAs = playerTurn.getPlayingAs();
       let userValue;
-      do {
-        userValue = prompt(
-          `${playerTurn.getName()} (${playerTurn.getPlayingAs()}) Please enter a number between 1-${board.totalCells()}`
-        );
-        if (userValue === null) return; //user quit
-      } while (!board.fillCell(userValue, playingAs));
-      console.log("Player 1: " + player1.playerInfo());
-      console.log("Player 2: " + player2.playerInfo());
-      board.printBoard();
+      // do {
+      //   userValue = prompt(
+      //     `${playerTurn.getName()} (${playerTurn.getPlayingAs()}) Please enter a number between 1-${board.totalCells()}`
+      //   );
+      //   if (userValue === null) return; //user quit
+      const cells = display.getCells();
+      console.log(cells);
+      cells.forEach((cell) =>
+        cell.addEventListener(
+          "click",
+          (e) => {
+            cell.innerText = playingAs;
+            cell.setAttribute("data", playingAs);
+            board.incrementCellsFilled();
+            let row = e.target.parentElement.className.split("-")[1];
+            let col = cell.className.split("-")[1];
+            cell.classList.toggle("disabled");
+
+            userValue = ++row * ++col;
+            board.fillCell(userValue, playingAs);
+            board.printBoard();
+
+            if (
+              board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
+              isGameOver(cell)
+            ) {
+              console.log(
+                `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
+              );
+              return;
+            }
+          },
+          { once: true }
+        )
+      );
+      return;
+      // while (!board.fillCell(userValue, playingAs));
+      // console.log("Player 1: " + player1.playerInfo());
+      // console.log("Player 2: " + player2.playerInfo());
+      // board.printBoard();
 
       if (
         board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
-        isGameOver(userValue, playingAs)
+        isGameOver(cell)
       ) {
         console.log(
           `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
@@ -215,6 +254,32 @@ function GameController() {
     }
   };
   return { playGame };
+}
+
+function DisplayController() {
+  const board = document.querySelector(".game-board");
+  const gameBoard = GameBoard().getBoard();
+  console.log(gameBoard.length);
+
+  const createGameBoard = (boardLength) => {
+    for (let i = 0; i < boardLength; i++) {
+      // board[i] = [];
+      const row = document.createElement("div");
+      row.className = `row-${i}`;
+      for (let j = 0; j < boardLength; j++) {
+        const cell = document.createElement("div");
+        cell.className = `cell-${j}`;
+        cell.setAttribute("data", "0");
+        row.appendChild(cell);
+      }
+      board.appendChild(row);
+    }
+  };
+
+  const displayBoard = () => board;
+  const getCells = () => document.querySelectorAll('[class^="cell"]');
+
+  return { createGameBoard, displayBoard, getCells };
 }
 
 GameController().playGame();
