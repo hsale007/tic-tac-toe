@@ -1,8 +1,9 @@
 function GameBoard() {
-  const rows = 3;
-  const cols = 3;
+  const rows = 4;
+  const cols = 4;
   let cellsFilled = 0;
   let board = [];
+  let winningCombo = [];
 
   const createBoard = () => {
     for (let i = 0; i < rows; i++) {
@@ -18,89 +19,80 @@ function GameBoard() {
   const getCellsFilled = () => cellsFilled;
   const totalCells = () => board.length * board.length;
   const incrementCellsFilled = () => cellsFilled++;
+  const getWinningCombo = () => winningCombo;
 
-  const fillCell = (value, playingAs) => {
-    if (isNaN(value)) {
-      console.log(`Please enter a number between 1-${totalCells()}`);
-      return false;
-    }
-    if (value < 1 || value > totalCells()) {
-      console.log(`Please enter a number between 1-${totalCells()}`);
-      return false;
-    }
-    const cell = Cell();
-    const [row, col] = cell.validateUserInput(value, board.length);
-    if (board[row][col]) {
-      console.log(`${value} is already taken. Please enter a different value.`);
-      return false;
-    }
+  const fillCell = (row, col, playingAs) => {
     board[row][col] = playingAs;
-    const domCell = document
-      .querySelector(`.row-${row}`)
-      .querySelector(`.cell-${col}`);
-    board[row][col] = domCell.innerText = playingAs;
-    domCell.setAttribute("data", playingAs);
     cellsFilled++;
     return true;
   };
 
-  const checkRow = (value, playingAs) => {
-    const row = Math.floor(value / board.length);
+  const checkRow = (row, playingAs) => {
+    let tempWinningCombo = [];
     for (let j = 0; j < cols; j++) {
       if (board[row][j] !== playingAs) return false;
+      tempWinningCombo.push([row, j]);
     }
+    winningCombo = tempWinningCombo;
     return true;
   };
 
-  const checkCol = (value, playingAs) => {
-    const row = Math.floor(value / board.length);
-    const col = value - row * board.length;
-
+  const checkCol = (col, playingAs) => {
+    let tempWinningCombo = [];
     for (let i = 0; i < rows; i++) {
       if (board[i][col] !== playingAs) return false;
+      tempWinningCombo.push([i, col]);
     }
+    winningCombo = tempWinningCombo;
     return true;
   };
 
-  const checkDiag = (value, playingAs) => {
-    // Need to see if user placement is diagnoal position
-    // HOW TO CHECK
-    // FIND OUT WHAT CORNERS ARE DIVISBLE BY
-    // FIND RIGHT CORNER
-    // FIND SECOND NUMBER IN LEFT CORNER PATH (skip leftmost corner since it is 0)
-    // IF USERVALUE IS DIVISIBLE BY EITHER CORNER THEN WE KNOW USER HAS A CHANCE TO WIN DIAGNOALLY
-    const rightCorner = board.length - 1;
-    const leftCorner = board.length + 1;
-    // console.log(value % rightCorner);
-
+  /*
+  Need to see if user placement is diagnoal position
+  HOW TO CHECK
+  LEFT SIDE (Top - Bottom)
+  If (row - col) === 0 then user is on the corner in the left side
+  If (row === col) then user select somewhere in the middle board on is in the left side
+  Right side (Top - Bottom)
+  iF (row - col) === +/-board.length - 1 then user is on the corner i the right side
+  if(row - col) === +/- 1 then user select somewhere in the middle board on right side
+  */
+  const checkDiag = (row, col, playingAs) => {
+    const leftSide = col - row === 0 || row === col;
+    const rightSide =
+      Math.abs(col - row) === board.length - 1 || Math.abs(col - row) === 1;
     //check if user is in a possible diagnoal path
-    if (value % rightCorner !== 0 && value % leftCorner !== 0) return false;
-
+    if (!leftSide && !rightSide) return false;
     //check if user is coming from the left or the right side
-    if (value % leftCorner === 0) {
-      let row = (col = 0);
+    let tempWinningCombo = [];
+    if (leftSide) {
+      row = col = 0;
       while (col < board.length) {
-        if (board[row++][col++] !== playingAs) return false;
+        if (board[row][col] !== playingAs) return false;
+        tempWinningCombo.push([row++, col++]);
       }
+      winningCombo = tempWinningCombo;
     }
-    if (
-      value % rightCorner === 0 &&
-      value !== board.length * board.length - 1
-    ) {
-      let row = 0;
-      let col = board.length - 1;
+    tempWinningCombo = [];
+    if (rightSide) {
+      row = 0;
+      col = board.length - 1;
       while (col >= 0) {
-        if (board[row++][col--] !== playingAs) return false;
+        if (board[row][col] !== playingAs) return false;
+        tempWinningCombo.push([row++, col--]);
       }
+      winningCombo = tempWinningCombo;
     }
     return true;
   };
 
-  const isWinner = (value, playingAs) => {
+  const isWinner = (row, col, playingAs) => {
+    console.log("in here");
+
     return (
-      checkRow(value, playingAs) ||
-      checkCol(value, playingAs) ||
-      checkDiag(value, playingAs)
+      checkRow(row, playingAs) ||
+      checkCol(col, playingAs) ||
+      checkDiag(row, col, playingAs)
     );
   };
 
@@ -121,6 +113,7 @@ function GameBoard() {
     totalCells,
     getCellsFilled,
     fillCell,
+    getWinningCombo,
   };
 }
 
@@ -140,7 +133,6 @@ function Player() {
 
   const getName = () => name;
   const setName = () => (name = prompt("What is your name?"));
-
   const askPlayingAs = () => {
     do {
       playingAs = prompt(`${name} would you like to be X or O`).toUpperCase();
@@ -157,8 +149,8 @@ function Player() {
     player1.setName();
     player1.askPlayingAs();
     player2.setName();
-    player2.setPlayingAs(player1.getPlayingAs() === "X" ? "O" : "X");
 
+    player2.setPlayingAs(player1.getPlayingAs() === "X" ? "O" : "X");
     return [player1, player2];
   };
 
@@ -179,10 +171,13 @@ function GameController() {
   const boardLength = board.getBoard().length;
   display.createGameBoard(boardLength);
   const [player1, player2] = Player().createPlayers();
+
   let playerTurn = "";
 
-  const isGameOver = (userValue, playingAs) =>
-    board.isWinner(--userValue, playingAs);
+  const isGameOver = (row, col, playingAs) =>
+    board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
+    board.isWinner(row, col, playingAs);
+
   const boardFull = () => board.getCellsFilled() === board.totalCells();
   const setPlayerTurn = () => {
     playerTurn =
@@ -196,62 +191,36 @@ function GameController() {
   };
 
   const playGame = () => {
-    setPlayerTurn();
-    while (!boardFull()) {
-      let playingAs = playerTurn.getPlayingAs();
-      let userValue;
-      // do {
-      //   userValue = prompt(
-      //     `${playerTurn.getName()} (${playerTurn.getPlayingAs()}) Please enter a number between 1-${board.totalCells()}`
-      //   );
-      //   if (userValue === null) return; //user quit
-      const cells = display.getCells();
-      console.log(cells);
-      cells.forEach((cell) =>
-        cell.addEventListener(
-          "click",
-          (e) => {
-            cell.innerText = playingAs;
-            cell.setAttribute("data", playingAs);
-            board.incrementCellsFilled();
-            let row = e.target.parentElement.className.split("-")[1];
-            let col = cell.className.split("-")[1];
-            cell.classList.toggle("disabled");
+    const cells = display.getCells();
+    cells.forEach((cell) =>
+      cell.addEventListener(
+        "click",
+        (e) => {
+          setPlayerTurn();
+          let row = e.target.parentElement.className.split("-")[1];
+          let col = cell.className.split("-")[1];
+          board.fillCell(row, col, playerTurn.getPlayingAs());
+          display.fillCell(cell, playerTurn.getPlayingAs());
+          board.printBoard();
 
-            userValue = ++row * ++col;
-            board.fillCell(userValue, playingAs);
-            board.printBoard();
-
-            if (
-              board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
-              isGameOver(cell)
-            ) {
-              console.log(
-                `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
-              );
-              return;
-            }
-          },
-          { once: true }
-        )
-      );
-      return;
-      // while (!board.fillCell(userValue, playingAs));
-      // console.log("Player 1: " + player1.playerInfo());
-      // console.log("Player 2: " + player2.playerInfo());
-      // board.printBoard();
-
-      if (
-        board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
-        isGameOver(cell)
-      ) {
-        console.log(
-          `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
-        );
-        return;
-      }
-      setPlayerTurn();
-    }
+          console.log(board.getCellsFilled());
+          if (boardFull()) {
+            console.log("Everyone is a loser");
+            return;
+          }
+          if (isGameOver(row, col, playerTurn.getPlayingAs())) {
+            console.log(board.getWinningCombo());
+            display.showWinningCombo(board.getWinningCombo());
+            display.gameOver();
+            console.log(
+              `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
+            );
+            return;
+          }
+        },
+        { once: true }
+      )
+    );
   };
   return { playGame };
 }
@@ -260,6 +229,8 @@ function DisplayController() {
   const board = document.querySelector(".game-board");
   const gameBoard = GameBoard().getBoard();
   console.log(gameBoard.length);
+
+  const gameOver = () => board.classList.toggle("game-over");
 
   const createGameBoard = (boardLength) => {
     for (let i = 0; i < boardLength; i++) {
@@ -276,10 +247,33 @@ function DisplayController() {
     }
   };
 
+  const fillCell = (cell, playingAs) => {
+    cell.innerText = playingAs;
+    cell.setAttribute("data", playingAs);
+    cell.classList.toggle("filled");
+  };
+
+  const showWinningCombo = (winningPairs) => {
+    winningPairs.forEach((pair) => {
+      const [row, col] = pair;
+      const cell = document
+        .querySelector(`.row-${row}`)
+        .querySelector(`.cell-${col}`);
+      cell.classList.toggle("winner");
+    });
+  };
+
   const displayBoard = () => board;
   const getCells = () => document.querySelectorAll('[class^="cell"]');
 
-  return { createGameBoard, displayBoard, getCells };
+  return {
+    createGameBoard,
+    displayBoard,
+    getCells,
+    showWinningCombo,
+    fillCell,
+    gameOver,
+  };
 }
 
 GameController().playGame();

@@ -47,10 +47,11 @@ div[class^="cell"] {
   font-family: var(--header-font);
   position: relative;
   font-size: 2rem;
-  &.disabled {
+  &.filled {
     background-color: grey;
-    cursor: not-allowed;
-    user-select: none;
+  }
+  &.winner {
+    background-color: green;
   }
 }
 
@@ -69,6 +70,9 @@ div[class^="row"] {
     grid-template-rows: repeat(auto-fit, minmax(0, 1fr));
     padding: 100px;
     width: 1000px;
+    &.game-over {
+      pointer-events: none;
+    }
   }
 }
 
