@@ -1,19 +1,18 @@
 function GameBoard() {
-  const rows = 4;
-  const cols = 4;
+  const rows = 3;
+  const cols = 3;
   let cellsFilled = 0;
   let board = [];
   let winningCombo = [];
 
-  const createBoard = () => {
+  const createBoard = (function () {
     for (let i = 0; i < rows; i++) {
       board[i] = [];
       for (let j = 0; j < cols; j++) {
         board[i][j] = 0;
       }
     }
-  };
-  createBoard(); //set empty board
+  })();
 
   const getBoard = () => board;
   const getCellsFilled = () => cellsFilled;
@@ -22,6 +21,7 @@ function GameBoard() {
   const getWinningCombo = () => winningCombo;
 
   const fillCell = (row, col, playingAs) => {
+    if (board[row][col] !== 0) return false;
     board[row][col] = playingAs;
     cellsFilled++;
     return true;
@@ -117,27 +117,11 @@ function GameBoard() {
   };
 }
 
-function Cell() {
-  const validateUserInput = (value, length) => {
-    //find spot in 2d array
-    const row = Math.floor(--value / length);
-    const col = value - row * length;
-    return [row, col];
-  };
-
-  return { validateUserInput };
-}
-
 function Player() {
   let playingAs, name;
 
   const getName = () => name;
-  const setName = () => (name = prompt("What is your name?"));
-  const askPlayingAs = () => {
-    do {
-      playingAs = prompt(`${name} would you like to be X or O`).toUpperCase();
-    } while (playingAs !== "X" && playingAs !== "O");
-  };
+  const setName = (value) => (name = value);
   const setPlayingAs = (value) => (playingAs = value);
   const getPlayingAs = () => playingAs;
 
@@ -146,11 +130,10 @@ function Player() {
   const createPlayers = () => {
     const player1 = Player();
     const player2 = Player();
-    player1.setName();
-    player1.askPlayingAs();
-    player2.setName();
-
-    player2.setPlayingAs(player1.getPlayingAs() === "X" ? "O" : "X");
+    player1.setName("Player 1");
+    player1.setPlayingAs("X");
+    player2.setName("Player 2");
+    player2.setPlayingAs("O");
     return [player1, player2];
   };
 
@@ -160,7 +143,6 @@ function Player() {
     playerInfo,
     createPlayers,
     setName,
-    askPlayingAs,
     setPlayingAs,
   };
 }
@@ -172,11 +154,30 @@ function GameController() {
   display.createGameBoard(boardLength);
   const [player1, player2] = Player().createPlayers();
 
-  let playerTurn = "";
+  let playerTurn = player1;
 
-  const isGameOver = (row, col, playingAs) =>
-    board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
-    board.isWinner(row, col, playingAs);
+  const isGameOver = (row, col, playingAs) => {
+    if (boardFull()) {
+      console.log("Everyone is a loser");
+      display.newGame();
+      display.updateScores();
+      return true;
+    }
+    if (
+      board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
+      board.isWinner(row, col, playingAs)
+    ) {
+      display.showWinningCombo(board.getWinningCombo());
+      display.gameOver();
+      console.log(
+        `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
+      );
+      display.newGame();
+      display.updateScores(playerTurn);
+      return true;
+    }
+    return false;
+  };
 
   const boardFull = () => board.getCellsFilled() === board.totalCells();
   const setPlayerTurn = () => {
@@ -190,49 +191,64 @@ function GameController() {
         : player1;
   };
 
+  const getComputerChoice = () => {
+    let row, col;
+    do {
+      row = Math.floor(Math.random() * boardLength);
+      col = Math.floor(Math.random() * boardLength);
+      console.log(row + " " + col);
+    } while (!board.fillCell(row, col, "O"));
+    const cell = document
+      .querySelector(`.row-${row}`)
+      .querySelector(`.cell-${col}`);
+    console.log(cell);
+    display.fillCell(cell, "O");
+    if (isGameOver(row, col, "O")) return;
+  };
+
   const playGame = () => {
     const cells = display.getCells();
     cells.forEach((cell) =>
       cell.addEventListener(
         "click",
         (e) => {
-          setPlayerTurn();
+          e.stopPropagation();
+          console.log(cell);
+
           let row = e.target.parentElement.className.split("-")[1];
           let col = cell.className.split("-")[1];
           board.fillCell(row, col, playerTurn.getPlayingAs());
           display.fillCell(cell, playerTurn.getPlayingAs());
           board.printBoard();
-
-          console.log(board.getCellsFilled());
-          if (boardFull()) {
-            console.log("Everyone is a loser");
-            return;
-          }
+          console.log("in here 1");
           if (isGameOver(row, col, playerTurn.getPlayingAs())) {
-            console.log(board.getWinningCombo());
-            display.showWinningCombo(board.getWinningCombo());
-            display.gameOver();
-            console.log(
-              `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
-            );
             return;
           }
+
+          if (display.getMode() === 2) setPlayerTurn();
+          else if (display.getMode() === 1) getComputerChoice();
         },
         { once: true }
       )
+    );
+    cells.forEach((cell) =>
+      cell.addEventListener("mouseover", () => {
+        cell.setAttribute("temp-data", playerTurn.getPlayingAs());
+      })
     );
   };
   return { playGame };
 }
 
 function DisplayController() {
-  const board = document.querySelector(".game-board");
-  const gameBoard = GameBoard().getBoard();
-  console.log(gameBoard.length);
+  let board = document.querySelector(".game-board");
+  let mode = "";
 
   const gameOver = () => board.classList.toggle("game-over");
 
   const createGameBoard = (boardLength) => {
+    board.replaceChildren();
+    setMode();
     for (let i = 0; i < boardLength; i++) {
       // board[i] = [];
       const row = document.createElement("div");
@@ -240,7 +256,8 @@ function DisplayController() {
       for (let j = 0; j < boardLength; j++) {
         const cell = document.createElement("div");
         cell.className = `cell-${j}`;
-        cell.setAttribute("data", "0");
+        cell.setAttribute("data", "");
+        cell.setAttribute("temp-data", "X");
         row.appendChild(cell);
       }
       board.appendChild(row);
@@ -266,6 +283,54 @@ function DisplayController() {
   const displayBoard = () => board;
   const getCells = () => document.querySelectorAll('[class^="cell"]');
 
+  const getMode = () => mode;
+  const setMode = () => {
+    const img = document.querySelector(".game-mode > img").getAttribute("src");
+    if (mode === "") mode = img.includes("one") ? 1 : 2;
+    else mode = mode === 1 ? 2 : 1;
+  };
+  const switchModes = (function () {
+    const gameMode = document.querySelector(".game-mode");
+    gameMode.addEventListener("click", () => {
+      console.log("in board swutcher");
+      const img = gameMode.querySelector("img");
+      setMode();
+      img.setAttribute(
+        "src",
+        mode === 2 ? "images/two-players.svg" : "images/one-player.svg"
+      );
+      clearBoard();
+    });
+  })();
+
+  const newGame = () => {
+    board.addEventListener(
+      "click",
+      () => {
+        clearBoard();
+      },
+      { once: true }
+    );
+  };
+
+  const clearBoard = () => {
+    board.classList.remove("game-over");
+    GameController().playGame();
+  };
+
+  const updateScores = (player) => {
+    if (player === undefined) {
+      const ties = document.querySelector(".ties > .score");
+      ties.innerText = parseInt(ties.innerText) + 1;
+    } else if (player.getName() === "Player 1") {
+      const player = document.querySelector(".player-1 > .score");
+      player.innerText = parseInt(player.innerText) + 1;
+    } else if (player.getName() === "Player 2") {
+      const player = document.querySelector(".player-2 > .score");
+      player.innerText = parseInt(player.innerText) + 1;
+    }
+  };
+
   return {
     createGameBoard,
     displayBoard,
@@ -273,6 +338,9 @@ function DisplayController() {
     showWinningCombo,
     fillCell,
     gameOver,
+    getMode,
+    newGame,
+    updateScores,
   };
 }
 
