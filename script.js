@@ -153,30 +153,32 @@ function GameController() {
   const boardLength = board.getBoard().length;
   display.createGameBoard(boardLength);
   const [player1, player2] = Player().createPlayers();
-
   let playerTurn = player1;
+  let formerPlayer = playerTurn;
 
   const isGameOver = (row, col, playingAs) => {
-    if (boardFull()) {
-      console.log("Everyone is a loser");
-      display.newGame();
-      display.updateScores();
-      return true;
-    }
     if (
       board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
       board.isWinner(row, col, playingAs)
     ) {
       display.showWinningCombo(board.getWinningCombo());
-      display.gameOver();
-      console.log(
-        `CONGRATULATIONS! ${playerTurn.getName()} You Are The Winner!`
-      );
-      display.newGame();
+      gameOverHelper();
       display.updateScores(playerTurn);
       return true;
     }
+    if (boardFull()) {
+      gameOverHelper();
+      return true;
+    }
     return false;
+  };
+
+  const gameOverHelper = () => {
+    formerPlayer = playerTurn = formerPlayer === player1 ? player2 : player1;
+    console.log(playerTurn.getName());
+    console.log(formerPlayer.getName());
+    display.gameOver();
+    if (display.newGame()) playGame();
   };
 
   const boardFull = () => board.getCellsFilled() === board.totalCells();
@@ -203,7 +205,7 @@ function GameController() {
       .querySelector(`.cell-${col}`);
     console.log(cell);
     display.fillCell(cell, "O");
-    if (isGameOver(row, col, "O")) return;
+    if (isGameOver(row, col, "O")) return true;
   };
 
   const playGame = () => {
@@ -213,8 +215,6 @@ function GameController() {
         "click",
         (e) => {
           e.stopPropagation();
-          console.log(cell);
-
           let row = e.target.parentElement.className.split("-")[1];
           let col = cell.className.split("-")[1];
           board.fillCell(row, col, playerTurn.getPlayingAs());
@@ -225,8 +225,11 @@ function GameController() {
             return;
           }
 
-          if (display.getMode() === 2) setPlayerTurn();
-          else if (display.getMode() === 1) getComputerChoice();
+          setPlayerTurn();
+          //if playing vs computer get computer choice
+          if (display.getMode() === 1 && playerTurn === player2) {
+            if (!getComputerChoice()) playerTurn = player1;
+          }
         },
         { once: true }
       )
@@ -250,7 +253,6 @@ function DisplayController() {
     board.replaceChildren();
     setMode();
     for (let i = 0; i < boardLength; i++) {
-      // board[i] = [];
       const row = document.createElement("div");
       row.className = `row-${i}`;
       for (let j = 0; j < boardLength; j++) {
@@ -300,6 +302,7 @@ function DisplayController() {
         mode === 2 ? "images/two-players.svg" : "images/one-player.svg"
       );
       clearBoard();
+      clearScores();
     });
   })();
 
@@ -308,6 +311,7 @@ function DisplayController() {
       "click",
       () => {
         clearBoard();
+        return true;
       },
       { once: true }
     );
@@ -315,7 +319,6 @@ function DisplayController() {
 
   const clearBoard = () => {
     board.classList.remove("game-over");
-    GameController().playGame();
   };
 
   const updateScores = (player) => {
@@ -329,6 +332,14 @@ function DisplayController() {
       const player = document.querySelector(".player-2 > .score");
       player.innerText = parseInt(player.innerText) + 1;
     }
+  };
+
+  const clearScores = () => {
+    const scores = document.querySelectorAll(".score");
+    scores.forEach((score) => {
+      console.log(score);
+      score.innerText = "0";
+    });
   };
 
   return {
