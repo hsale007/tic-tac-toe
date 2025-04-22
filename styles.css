@@ -50,6 +50,9 @@ div[class^="row"] {
     font-family: var(--header-font);
     position: relative;
     font-size: 7rem;
+    &.filled {
+      pointer-events: none;
+    }
     &:first-child {
       border-left: none;
     }

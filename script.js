@@ -1,7 +1,7 @@
 function GameBoard() {
-  const rows = 3;
-  const cols = 3;
   let cellsFilled = 0;
+  let rows = 3;
+  let cols = 3;
   let board = [];
   let winningCombo = [];
 
@@ -87,8 +87,6 @@ function GameBoard() {
   };
 
   const isWinner = (row, col, playingAs) => {
-    console.log("in here");
-
     return (
       checkRow(row, playingAs) ||
       checkCol(col, playingAs) ||
@@ -119,11 +117,14 @@ function GameBoard() {
 
 function Player() {
   let playingAs, name;
+  let score = 0;
 
   const getName = () => name;
   const setName = (value) => (name = value);
   const setPlayingAs = (value) => (playingAs = value);
   const getPlayingAs = () => playingAs;
+  const incrementScore = () => score++;
+  const getScore = () => score;
 
   const playerInfo = () => `${name}\nPlaying as ${playingAs}`;
 
@@ -144,114 +145,99 @@ function Player() {
     createPlayers,
     setName,
     setPlayingAs,
+    incrementScore,
+    getScore,
   };
 }
 
 function GameController() {
-  const board = GameBoard();
-  const display = DisplayController();
+  let board = GameBoard();
   const boardLength = board.getBoard().length;
-  display.createGameBoard(boardLength);
   const [player1, player2] = Player().createPlayers();
   let playerTurn = player1;
   let formerPlayer = playerTurn;
+  let ties = 0;
 
   const isGameOver = (row, col, playingAs) => {
     if (
-      board.getCellsFilled() >= board.getBoard().length * 2 - 1 &&
+      board.getCellsFilled() >= boardLength * 2 - 1 &&
       board.isWinner(row, col, playingAs)
     ) {
-      display.showWinningCombo(board.getWinningCombo());
-      gameOverHelper();
-      display.updateScores(playerTurn);
+      playerTurn.incrementScore();
       return true;
     }
     if (boardFull()) {
-      gameOverHelper();
+      ties++;
       return true;
     }
     return false;
   };
-
-  const gameOverHelper = () => {
-    formerPlayer = playerTurn = formerPlayer === player1 ? player2 : player1;
-    console.log(playerTurn.getName());
-    console.log(formerPlayer.getName());
-    display.gameOver();
-    if (display.newGame()) playGame();
-  };
-
+  //create a new gameboard when user plays again
+  const getWinningCombo = () => board.getWinningCombo();
+  const newBoard = () => (board = GameBoard());
   const boardFull = () => board.getCellsFilled() === board.totalCells();
   const setPlayerTurn = () => {
-    playerTurn =
-      playerTurn === ""
-        ? player1.getPlayingAs() === "X"
-          ? player1
-          : player2
-        : playerTurn === player1
-        ? player2
-        : player1;
+    playerTurn = playerTurn === player1 ? player2 : player1;
   };
-
+  const currentPlayer = () => playerTurn;
+  //swap which player goes first for each game
+  const whoGoesFirst = () =>
+    (playerTurn = formerPlayer = formerPlayer === player1 ? player2 : player1);
+  const getScores = () => [ties, player1.getScore(), player2.getScore()];
+  //random cell selection by computer
   const getComputerChoice = () => {
     let row, col;
     do {
       row = Math.floor(Math.random() * boardLength);
       col = Math.floor(Math.random() * boardLength);
-      console.log(row + " " + col);
     } while (!board.fillCell(row, col, "O"));
     const cell = document
       .querySelector(`.row-${row}`)
       .querySelector(`.cell-${col}`);
-    console.log(cell);
-    display.fillCell(cell, "O");
-    if (isGameOver(row, col, "O")) return true;
+    return [row, col, cell];
   };
 
-  const playGame = () => {
-    const cells = display.getCells();
-    cells.forEach((cell) =>
-      cell.addEventListener(
-        "click",
-        (e) => {
-          e.stopPropagation();
-          let row = e.target.parentElement.className.split("-")[1];
-          let col = cell.className.split("-")[1];
-          board.fillCell(row, col, playerTurn.getPlayingAs());
-          display.fillCell(cell, playerTurn.getPlayingAs());
-          board.printBoard();
-          console.log("in here 1");
-          if (isGameOver(row, col, playerTurn.getPlayingAs())) {
-            return;
-          }
-
-          setPlayerTurn();
-          //if playing vs computer get computer choice
-          if (display.getMode() === 1 && playerTurn === player2) {
-            if (!getComputerChoice()) playerTurn = player1;
-          }
-        },
-        { once: true }
-      )
-    );
-    cells.forEach((cell) =>
-      cell.addEventListener("mouseover", () => {
-        cell.setAttribute("temp-data", playerTurn.getPlayingAs());
-      })
-    );
+  const fillCell = (row, col, playingAs) => board.fillCell(row, col, playingAs);
+  const printBoard = () => board.printBoard();
+  return {
+    isGameOver,
+    currentPlayer,
+    setPlayerTurn,
+    fillCell,
+    getWinningCombo,
+    newBoard,
+    getComputerChoice,
+    whoGoesFirst,
+    printBoard,
+    getScores,
   };
-  return { playGame };
 }
 
 function DisplayController() {
-  let board = document.querySelector(".game-board");
-  let mode = "";
+  let displayBoard = document.querySelector(".game-board");
+  let game = GameController();
+  let mode = 2; //game starts on 2P mode
 
-  const gameOver = () => board.classList.toggle("game-over");
+  //check if user switches between 2p & 1p mode
+  const switchModes = (function () {
+    const gameMode = document.querySelector(".game-mode");
+    gameMode.addEventListener("click", () => {
+      const img = gameMode.querySelector("img");
+      mode = mode === 1 ? 2 : 1;
+      img.setAttribute(
+        "src",
+        mode === 2 ? "images/two-players.svg" : "images/one-player.svg"
+      );
+      game = 0;
+      game = GameController();
+      clearBoard();
+      clearScores();
+    });
+  })();
+  const getCells = () => document.querySelectorAll('[class^="cell"]');
 
   const createGameBoard = (boardLength) => {
-    board.replaceChildren();
-    setMode();
+    displayBoard.innerText = ""; //clear board if necessary (i.e playing again)
     for (let i = 0; i < boardLength; i++) {
       const row = document.createElement("div");
       row.className = `row-${i}`;
@@ -262,14 +248,8 @@ function DisplayController() {
         cell.setAttribute("temp-data", "X");
         row.appendChild(cell);
       }
-      board.appendChild(row);
+      displayBoard.appendChild(row);
     }
-  };
-
-  const fillCell = (cell, playingAs) => {
-    cell.innerText = playingAs;
-    cell.setAttribute("data", playingAs);
-    cell.classList.toggle("filled");
   };
 
   const showWinningCombo = (winningPairs) => {
@@ -282,77 +262,96 @@ function DisplayController() {
     });
   };
 
-  const displayBoard = () => board;
-  const getCells = () => document.querySelectorAll('[class^="cell"]');
-
-  const getMode = () => mode;
-  const setMode = () => {
-    const img = document.querySelector(".game-mode > img").getAttribute("src");
-    if (mode === "") mode = img.includes("one") ? 1 : 2;
-    else mode = mode === 1 ? 2 : 1;
+  const gameOver = () => {
+    displayBoard.classList.toggle("game-over");
+    game.whoGoesFirst();
+    newGame();
   };
-  const switchModes = (function () {
-    const gameMode = document.querySelector(".game-mode");
-    gameMode.addEventListener("click", () => {
-      console.log("in board swutcher");
-      const img = gameMode.querySelector("img");
-      setMode();
-      img.setAttribute(
-        "src",
-        mode === 2 ? "images/two-players.svg" : "images/one-player.svg"
-      );
-      clearBoard();
-      clearScores();
-    });
-  })();
-
   const newGame = () => {
-    board.addEventListener(
+    displayBoard.addEventListener(
       "click",
       () => {
         clearBoard();
-        return true;
       },
       { once: true }
     );
   };
-
   const clearBoard = () => {
-    board.classList.remove("game-over");
+    displayBoard.innerText = "";
+    displayBoard.classList.remove("game-over");
+    game.newBoard();
+    updateScreen();
   };
 
-  const updateScores = (player) => {
-    if (player === undefined) {
-      const ties = document.querySelector(".ties > .score");
-      ties.innerText = parseInt(ties.innerText) + 1;
-    } else if (player.getName() === "Player 1") {
-      const player = document.querySelector(".player-1 > .score");
-      player.innerText = parseInt(player.innerText) + 1;
-    } else if (player.getName() === "Player 2") {
-      const player = document.querySelector(".player-2 > .score");
-      player.innerText = parseInt(player.innerText) + 1;
-    }
+  const updateScores = () => {
+    const scores = game.getScores();
+    document.querySelector(".ties > .score").innerText = scores[0];
+    document.querySelector(".player-1 > .score").innerText = scores[1];
+    document.querySelector(".player-2 > .score").innerText = scores[2];
   };
-
   const clearScores = () => {
     const scores = document.querySelectorAll(".score");
     scores.forEach((score) => {
-      console.log(score);
       score.innerText = "0";
     });
   };
 
-  return {
-    createGameBoard,
-    displayBoard,
-    getCells,
-    showWinningCombo,
-    fillCell,
-    gameOver,
-    getMode,
-    newGame,
-    updateScores,
+  const fillCell = (cell, playingAs) => {
+    cell.innerText = playingAs;
+    cell.setAttribute("data", playingAs);
+    cell.classList.toggle("filled");
   };
+
+  const computerTurn = () => {
+    if (mode === 1 && game.currentPlayer().getPlayingAs() == "O") {
+      const compChoice = game.getComputerChoice();
+      displayBoard.classList.toggle("game-over");
+      //wait for computer to guess - don't allow user to select any cells
+      setTimeout(() => {
+        compChoice[2].click();
+        displayBoard.classList.toggle("game-over");
+      }, 200);
+    }
+  };
+
+  const updateScreen = () => {
+    createGameBoard(3);
+
+    const cells = getCells();
+    //allow user to interact with board
+    cells.forEach((cell) =>
+      cell.addEventListener(
+        "click",
+        (e) => {
+          e.stopPropagation();
+          let row = e.target.parentElement.className.split("-")[1];
+          let col = cell.className.split("-")[1];
+          game.fillCell(row, col, game.currentPlayer().getPlayingAs());
+          fillCell(cell, game.currentPlayer().getPlayingAs());
+          game.printBoard();
+          if (game.isGameOver(row, col, game.currentPlayer().getPlayingAs())) {
+            showWinningCombo(game.getWinningCombo());
+            updateScores(game.currentPlayer());
+            gameOver();
+            return;
+          }
+          game.setPlayerTurn();
+          computerTurn();
+        },
+        { once: true }
+      )
+    );
+    computerTurn(); // check if computer is supposed to go first
+
+    //show whose turn it currently is
+    cells.forEach((cell) =>
+      cell.addEventListener("mouseover", () => {
+        cell.setAttribute("temp-data", game.currentPlayer().getPlayingAs());
+      })
+    );
+  };
+  //initally start the game
+  updateScreen();
 }
 
-GameController().playGame();
+DisplayController();
