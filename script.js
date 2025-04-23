@@ -1,7 +1,6 @@
-function GameBoard() {
+function GameBoard(gridSize) {
   let cellsFilled = 0;
-  let rows = 3;
-  let cols = 3;
+  let rows = (cols = gridSize);
   let board = [];
   let winningCombo = [];
 
@@ -150,8 +149,8 @@ function Player() {
   };
 }
 
-function GameController() {
-  let board = GameBoard();
+function GameController(gridSize) {
+  let board = GameBoard(gridSize);
   const boardLength = board.getBoard().length;
   const [player1, player2] = Player().createPlayers();
   let playerTurn = player1;
@@ -174,7 +173,7 @@ function GameController() {
   };
   //create a new gameboard when user plays again
   const getWinningCombo = () => board.getWinningCombo();
-  const newBoard = () => (board = GameBoard());
+  const newBoard = (gridSize) => (board = GameBoard(gridSize));
   const boardFull = () => board.getCellsFilled() === board.totalCells();
   const setPlayerTurn = () => {
     playerTurn = playerTurn === player1 ? player2 : player1;
@@ -215,9 +214,9 @@ function GameController() {
 
 function DisplayController() {
   let displayBoard = document.querySelector(".game-board");
-  let game = GameController();
   let mode = 2; //game starts on 2P mode
-
+  let gridSize = 3; //default grid size
+  let game = GameController(gridSize);
   //check if user switches between 2p & 1p mode
   const switchModes = (function () {
     const gameMode = document.querySelector(".game-mode");
@@ -228,10 +227,32 @@ function DisplayController() {
         "src",
         mode === 2 ? "images/two-players.svg" : "images/one-player.svg"
       );
-      game = 0;
-      game = GameController();
+      game = GameController(gridSize);
       clearBoard();
       clearScores();
+    });
+  })();
+
+  const getGridSize = (function () {
+    const sizes = document.querySelectorAll(".grid-size > div");
+    sizes.forEach((size) => {
+      size.addEventListener("click", () => {
+        console.log(size);
+        gridSize = size.getAttribute("size");
+        console.log(gridSize);
+        gridSize === 3
+          ? document.documentElement.style.setProperty(
+              "--cellFontSize",
+              "6.5rem"
+            )
+          : document.documentElement.style.setProperty(
+              "--cellFontSize",
+              "5.5rem"
+            );
+        game = GameController(gridSize);
+        clearBoard();
+        clearScores();
+      });
     });
   })();
   const getCells = () => document.querySelectorAll('[class^="cell"]');
@@ -264,7 +285,7 @@ function DisplayController() {
 
   const gameOver = () => {
     displayBoard.classList.toggle("game-over");
-    game.whoGoesFirst();
+    game.whoGoesFirst(); //find out who is gonna first for the next round
     newGame();
   };
   const newGame = () => {
@@ -279,8 +300,14 @@ function DisplayController() {
   const clearBoard = () => {
     displayBoard.innerText = "";
     displayBoard.classList.remove("game-over");
-    game.newBoard();
+    game.newBoard(gridSize);
     updateScreen();
+  };
+  const clearScores = () => {
+    const scores = document.querySelectorAll(".score");
+    scores.forEach((score) => {
+      score.innerText = "0";
+    });
   };
 
   const updateScores = () => {
@@ -288,12 +315,6 @@ function DisplayController() {
     document.querySelector(".ties > .score").innerText = scores[0];
     document.querySelector(".player-1 > .score").innerText = scores[1];
     document.querySelector(".player-2 > .score").innerText = scores[2];
-  };
-  const clearScores = () => {
-    const scores = document.querySelectorAll(".score");
-    scores.forEach((score) => {
-      score.innerText = "0";
-    });
   };
 
   const fillCell = (cell, playingAs) => {
@@ -315,7 +336,7 @@ function DisplayController() {
   };
 
   const updateScreen = () => {
-    createGameBoard(3);
+    createGameBoard(gridSize);
 
     const cells = getCells();
     //allow user to interact with board

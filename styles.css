@@ -6,6 +6,7 @@
 }
 
 :root {
+  --cellFontSize: 6.5rem;
   --content-font: "Funnel Sans";
   --header-font: "Sour Gummy";
   --playingAs: "X";
@@ -40,16 +41,16 @@
 }
 
 div[class^="row"] {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  display: flex;
   > div[class^="cell"] {
-    border: 0.4rem solid white;
+    flex: 1;
     display: flex;
     justify-content: center;
     align-items: center;
+    border: 5px solid white;
     font-family: var(--header-font);
-    position: relative;
-    font-size: 7rem;
+    text-align: center;
+    font-size: var(--cellFontSize);
     &.filled {
       pointer-events: none;
     }
@@ -80,38 +81,42 @@ div[class^="row"] {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 100px;
-  gap: 20px;
+  gap: 40px;
+  padding-top: 30px;
   > .game-board {
-    flex: 1;
+    flex-basis: 70%;
     display: grid;
     grid-template-rows: repeat(auto-fit, minmax(0, 1fr));
-    width: 1000px;
-    padding: 20px 50px;
+    width: 800px;
+    padding: 30px;
     &.game-over div[class^="cell"] {
       pointer-events: none !important;
     }
   }
-  > .game-info > .scores {
-    display: flex;
-    gap: 50px;
-    padding-bottom: 20px;
-    > div {
+  > .game-info {
+    > .scores {
       display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 7px;
-      font-family: var(--header-font);
-      color: white;
-      font-size: 1.3rem;
-    }
-    > .game-mode {
-      cursor: pointer;
-      font-size: 1.5rem;
-      flex-direction: row;
-      > img {
-        width: 50px;
-        position: relative;
+      gap: 50px;
+      > div {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--header-font);
+        color: white;
+        font-size: 1.3rem;
+      }
+      > .game-mode {
+        cursor: pointer;
+        font-size: 1.5rem;
+        flex-direction: row;
+        > img {
+          width: 50px;
+          position: relative;
+        }
+        &:hover {
+          opacity: 0.7;
+        }
       }
     }
   }
@@ -130,12 +135,28 @@ div[class^="row"] {
 
 .player-2:has(+ .game-mode > img[src="images/two-players.svg"])
   > .player-2-name::after {
-  content: "Player 2 (O)";
+  content: "\00a0\00a0Player 2 (O)\00a0\00a0";
 }
 
 .player-2:has(+ .game-mode > img[src="images/one-player.svg"])
   > .player-2-name::after {
   content: "Computer (O)";
+}
+
+.grid-size {
+  display: flex;
+  justify-content: center;
+  margin-top: 30px;
+  gap: 60px;
+  > div {
+    font-family: var(--header-font);
+    font-size: 2.5rem;
+    color: white;
+    cursor: pointer;
+    &:hover {
+      opacity: 0.7;
+    }
+  }
 }
 
 /* prettier-ignore  */
